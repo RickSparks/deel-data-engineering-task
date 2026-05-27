@@ -20,7 +20,7 @@ models:
     staging:
       +materialized: view
       +schema: staging
-    marts:
+    data_marts:
       +materialized: table
       +schema: analytics
 
