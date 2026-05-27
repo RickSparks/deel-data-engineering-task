@@ -1,2 +1,3 @@
 db-data/
 dbt-postgres-env/
+consumer/venv/
