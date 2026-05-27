@@ -1,0 +1,31 @@
+name: 'analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'analytics'
+
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  analytics:
+    staging:
+      +materialized: view
+      +schema: staging
+    data_marts:
+      +materialized: table
+      +schema: analytics
+
+snapshots:
+  analytics:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
