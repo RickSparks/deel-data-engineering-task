@@ -13,9 +13,12 @@
 with order_items as (
     select * from {{ ref('stg_order_items') }}
     {% if is_incremental() %}
-        -- On incremental runs, process newer records
-        where _ingested_at > (select max(_ingested_at) from {{ this }})
-    {% endif %}
+    -- On incremental runs, process newer records
+    where _ingested_at > (
+        select COALESCE(max(_ingested_at), '1970-01-01'::timestamp) 
+        from {{ this }}
+    )
+{% endif %}
 ),
 
 orders as (

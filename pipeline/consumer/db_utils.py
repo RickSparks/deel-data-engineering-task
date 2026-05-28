@@ -5,7 +5,9 @@
 import psycopg2
 import psycopg2.extras
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta, date
+import base64
+import decimal
 
 
 
@@ -24,7 +26,34 @@ def get_connection():
         dbname=os.getenv("ANALYTICS_DB_NAME", "analytics_db"),
     )
 
-# 2.2 - Create RAW schemas and tables
+
+# 2.2 - Convert epoch to date
+def epoch_days_to_date(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return date(1970, 1, 1) + timedelta(days=int(value))
+    return value
+
+
+# 2.3 - Decode decimal
+def decode_debezium_decimal(value):
+
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return value
+
+    scale = value.get("scale", 0)
+    raw_bytes = base64.b64decode(value["value"])
+    
+    unscaled = int.from_bytes(raw_bytes, byteorder="big", signed=True)
+    
+    result = decimal.Decimal(unscaled) / (decimal.Decimal(10) ** scale)
+    return float(result)
+
+
+# 2.4 - Create RAW schemas and tables
 def create_raw_schema(conn):
     
     with conn.cursor() as cur:
@@ -102,7 +131,7 @@ def create_raw_schema(conn):
     print(f"[{datetime.now()}] Raw schema and tables ready.")
 
 
-# 2.3 - Create Upsert for raw.customers table
+# 2.5 - Create Upsert for raw.customers table
 def upsert_customer(conn, data: dict, op: str):
 
     # Defining the SQL upsert statement
@@ -133,7 +162,7 @@ def upsert_customer(conn, data: dict, op: str):
     print(f"[{datetime.now()}] Upsert to customers table completed.")
 
 
-# 2.4 - Create Upsert for raw.products table
+# 2.6 - Create Upsert for raw.products table
 def upsert_product(conn, data: dict, op: str):
 
     # Defining the SQL upsert statement
@@ -157,6 +186,9 @@ def upsert_product(conn, data: dict, op: str):
             _ingested_at = EXCLUDED._ingested_at;
     """
 
+    # Decode Debezium binary decimal format
+    data["unity_price"] = decode_debezium_decimal(data.get("unity_price"))
+
     # Iterate over the data structure to be upserted
     with conn.cursor() as cur:
         cur.execute(sql, {**data, "op": op})
@@ -165,7 +197,7 @@ def upsert_product(conn, data: dict, op: str):
     print(f"[{datetime.now()}] Upsert to products table completed.")
 
 
-# 2.5 - Create Upsert for raw.orders table
+# 2.7 - Create Upsert for raw.orders table
 def upsert_order(conn, data: dict, op: str):
 
     # Defining the SQL upsert statement
@@ -189,6 +221,10 @@ def upsert_order(conn, data: dict, op: str):
             _ingested_at  = EXCLUDED._ingested_at;
     """
 
+    # Convert integer epoch days to date objects
+    data["order_date"]    = epoch_days_to_date(data.get("order_date"))
+    data["delivery_date"] = epoch_days_to_date(data.get("delivery_date"))
+
     # Iterate over the data structure to be upserted
     with conn.cursor() as cur:
         cur.execute(sql, {**data, "op": op})
@@ -198,7 +234,7 @@ def upsert_order(conn, data: dict, op: str):
 
 
 
-# 2.5 - Create Upsert for raw.order_items table
+# 2.8 - Create Upsert for raw.order_items table
 def upsert_order_item(conn, data: dict, op: str):
 
     # Defining the SQL upsert statement
@@ -220,6 +256,8 @@ def upsert_order_item(conn, data: dict, op: str):
             _op           = EXCLUDED._op,
             _ingested_at  = EXCLUDED._ingested_at;
     """
+    # Fix source DB typo: 'quanity' -> 'quantity'
+    data["quantity"] = data.pop("quanity", data.get("quantity"))
 
     # Iterate over the data structure to be upserted
     with conn.cursor() as cur:
