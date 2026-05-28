@@ -1,0 +1,12 @@
+analytics:
+  target: prod
+  outputs:
+    prod:
+      type: postgres
+      host: "{{ env_var('ANALYTICS_DB_HOST', 'localhost') }}"
+      port: "{{ env_var('ANALYTICS_DB_PORT', '5432') | int }}"
+      user: "{{ env_var('ANALYTICS_DB_USER', 'analytics_user') }}"
+      password: "{{ env_var('ANALYTICS_DB_PASSWORD', 'analytics_pass') }}"
+      dbname: "{{ env_var('ANALYTICS_DB_NAME', 'analytics_db') }}"
+      schema: analytics
+      threads: 4

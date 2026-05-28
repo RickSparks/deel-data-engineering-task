@@ -11,7 +11,7 @@ from fastapi import APIRouter, Query, HTTPException
 #
 # 2. Import my utils
 #
-from api.database import get_db
+from database import get_db
 
 
 

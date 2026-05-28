@@ -28,14 +28,21 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
     ports:
       - "9092:9092"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   kafka-connect:
     image: debezium/connect:2.4
@@ -79,6 +86,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  consumer:
+    build:
+      context: ./pipeline
+      dockerfile: consumer/Dockerfile
+    container_name: consumer
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DBT_TRIGGER_BATCH_SIZE: "50"
+      ANALYTICS_DB_HOST: analytics-db
+      ANALYTICS_DB_PORT: "5432"
+      ANALYTICS_DB_USER: analytics_user
+      ANALYTICS_DB_PASSWORD: analytics_pass
+      ANALYTICS_DB_NAME: analytics_db
+      DBT_PROJECT_DIR: /app/dbt_project
+    restart: on-failure
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: api
+    ports:
+      - "8000:8000"
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+    environment:
+      ANALYTICS_DB_HOST: analytics-db
+      ANALYTICS_DB_PORT: "5432"
+      ANALYTICS_DB_USER: analytics_user
+      ANALYTICS_DB_PASSWORD: analytics_pass
+      ANALYTICS_DB_NAME: analytics_db
+    restart: on-failure
 
 volumes:
   pg-data:

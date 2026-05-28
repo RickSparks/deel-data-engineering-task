@@ -9,7 +9,7 @@ from fastapi import FastAPI
 #
 # 2. Import my utils
 #
-from api.routers import analytics
+from routers import analytics
 
 
 

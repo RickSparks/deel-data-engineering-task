@@ -154,6 +154,10 @@ def run_dbt():
             cwd=DBT_PROJECT_DIR,
             capture_output=True,
             text=True,
+            env={
+                **os.environ,
+                "DBT_PROFILES_DIR": DBT_PROJECT_DIR,
+            }
         )
 
         status = "OK" if result.returncode == 0 else "FAILED"
