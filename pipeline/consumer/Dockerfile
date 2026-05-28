@@ -9,16 +9,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY consumer/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install dbt — consumer triggers dbt runs directly
 RUN pip install --no-cache-dir dbt-postgres==1.7.9
 
 # Copy consumer source code
-COPY . .
+COPY consumer/ .
 
 # Copy dbt project into the container
-COPY ../dbt_project /app/dbt_project
+COPY dbt_project ./dbt_project
 
 CMD ["python", "kafka_consumer.py"]
