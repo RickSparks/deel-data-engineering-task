@@ -230,7 +230,8 @@ Tracks product changes over time, including price changes.
 Calendar table covering 2020–2030
 
 ### Diagram
-![Star Schema Diagram](./diagrams/star-schema-diagram.png)
+
+![Star Schema Diagram](./diagrams/star-schema.png)
 
 
 ---
